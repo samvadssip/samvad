@@ -29,10 +29,7 @@ public class LoginActivity extends AppCompatActivity {
         setContentView(R.layout.activity_login);
 
         if(checkForSignIn()){
-            startActivity(new Intent(this,HomeActivity.class));
-            finish();
-
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+            navigateToHomeActivity();
         }
         btnGoogle = findViewById(R.id.btn_google);
         gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -45,7 +42,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private boolean checkForSignIn() {
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
-        return account.getDisplayName()!=null;
+        return account!=null;
     }
 
     private void signIn() {
@@ -61,6 +58,9 @@ public class LoginActivity extends AppCompatActivity {
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
             try {
                 task.getResult(ApiException.class);
+
+                GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+                Toast.makeText(this,"hello "+account.getDisplayName(), Toast.LENGTH_SHORT).show();
                 navigateToHomeActivity();
             } catch (ApiException e) {
                 e.printStackTrace();
@@ -70,7 +70,8 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void navigateToHomeActivity() {
-        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
-        Toast.makeText(this,"hello "+account.getDisplayName(), Toast.LENGTH_SHORT).show();
+        startActivity(new Intent(this,HomeActivity.class));
+        finish();
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }
 }

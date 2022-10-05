@@ -4,21 +4,24 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.MenuItem;
+import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import com.google.android.gms.vision.CameraSource;
-
-import java.io.IOException;
+import com.google.android.gms.vision.text.TextRecognizer;
 
 public class HomeActivity extends AppCompatActivity {
 
+    public static final String TAG = "HomeActivity";
     private static final int CAMERA_PERMISSION = 104;
     LinearLayout sideMenu;
     SurfaceView surfaceView;
@@ -40,21 +43,47 @@ public class HomeActivity extends AppCompatActivity {
         startCameraSource();
     }
 
-    private void startCameraSource(){
-        if(ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
-            Toast.makeText(HomeActivity.this,"Cannot start camera",Toast.LENGTH_SHORT).show();
+    private void startCameraSource() {
+        if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(HomeActivity.this, "Cannot start camera", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        DisplayMetrics metrics = getApplicationContext().getResources().getDisplayMetrics();
-        float ratio = ((float)metrics.heightPixels / (float)metrics.widthPixels);
+        final TextRecognizer textRecognizer = new TextRecognizer.Builder(getApplicationContext()).build();
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+        int width = displayMetrics.widthPixels;
+        cameraSource = new CameraSource.Builder(getApplicationContext(), textRecognizer)
+                .setFacing(CameraSource.CAMERA_FACING_BACK)
+                .setRequestedPreviewSize((width/2)*4/3, width/2)
+                .setAutoFocusEnabled(true)
+                .setRequestedFps(2.0f)
+                .build();
+        surfaceView.getHolder().setFixedSize(width/2, (width/2)*4/3);
+        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(@NonNull SurfaceHolder holder) {
+                try {
+                    if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                        ActivityCompat.requestPermissions(HomeActivity.this, new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION);
+                        return;
+                    }
+                    cameraSource.start(surfaceView.getHolder());
+                } catch (Exception e) {
+                    Log.d(TAG, "surfaceCreated: " + e.getMessage());
+                }
+            }
 
-            /*cameraSource = new CameraSource.Builder()
-                    .setFacing(CameraSource.CAMERA_FACING_BACK)
-                    .setRequestedPreviewSize(1300, 1080)
-                    .setAutoFocusEnabled(true)
-                    .setRequestedFps(2.0f)
-                    .build();*/
+            @Override
+            public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {//Release source for cameraSource
+
+            }
+
+            @Override
+            public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
+                cameraSource.stop();
+            }
+        });
     }
 
     private void setSideMenu() {
