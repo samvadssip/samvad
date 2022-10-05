@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "964819933625",
+    "project_id": "samvad-231cd",
+    "storage_bucket": "samvad-231cd.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:964819933625:android:7486143fa6fd6a2ce2fe68",
+        "android_client_info": {
+          "package_name": "com.samvad"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "964819933625-juhhpl1gc7hob90u3fifm72c749l712j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4PJIhSviEVnPT3HpNL0m1YHyebffayLk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "964819933625-juhhpl1gc7hob90u3fifm72c749l712j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
