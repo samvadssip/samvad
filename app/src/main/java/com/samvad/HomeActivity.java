@@ -7,9 +7,11 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.speech.tts.TextToSpeech;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MenuItem;
@@ -25,7 +27,9 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -35,6 +39,7 @@ import com.google.android.gms.vision.text.TextRecognizer;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Collections;
+import java.util.Locale;
 
 public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuItemClickListener {
 
@@ -45,22 +50,38 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
     private CameraSource cameraSource;
     private UIUpdater uiUpdater;
 
-    LinearLayout speakBtn, speakBgBtn;
+    LinearLayout speakBtnOff,speakBtnOn;
     TextView translatedText;
-
+    TextToSpeech textToSpeech;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
         surfaceView = findViewById(R.id.surface_view);
-        speakBtn = findViewById(R.id.speak_btn);
-        speakBgBtn = findViewById(R.id.speak_bg_btn);
+        speakBtnOff = findViewById(R.id.speak_btn_off);
+        speakBtnOn = findViewById(R.id.speak_btn_on);
         translatedText = findViewById(R.id.translated_text);
-        speakBtn.setOnClickListener((v)->{
 
-        });
         startCameraSource();
+        textToSpeech = new TextToSpeech(getApplicationContext(), i -> {
+//            textToSpeech.setSpeechRate(0.85f);
+            // if No error is found then only it will run
+            if (i != TextToSpeech.ERROR) {
+                textToSpeech.setLanguage(new Locale("gu_IN"));
+//              textToSpeech.setLanguage(Locale.US);
+            }
+        });
+        speakBtnOff.setOnClickListener((v)->{
+            speakBtnOff.setVisibility(View.INVISIBLE);
+            speakBtnOn.setVisibility(View.VISIBLE);
+            textToSpeech.speak(translatedText.getText().toString(), TextToSpeech.QUEUE_FLUSH, null);
+            final Handler handler = new Handler();
+            handler.postDelayed(() -> {
+                speakBtnOff.setVisibility(View.VISIBLE);
+                speakBtnOn.setVisibility(View.INVISIBLE);
+            }, 1000);
+        });
     }
 
     /**
@@ -86,7 +107,7 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
     public boolean onMenuItemClick(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.about:
-                Toast.makeText(this, "About Clicked!!", Toast.LENGTH_SHORT).show();
+//                Toast.makeText(this, "About Clicked!!", Toast.LENGTH_SHORT).show();
                 startActivity(new Intent(this, AboutActivity.class));
                 return true;
             case R.id.logout:
@@ -103,9 +124,7 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
                     customDialog.cancel();
                 });
                 LinearLayout btn_no = customDialog.findViewById(R.id.btn_no);
-                btn_no.setOnClickListener((v) -> {
-                    customDialog.cancel();
-                });
+                btn_no.setOnClickListener((v) -> customDialog.cancel());
                 return true;
             default:
                 return false;
