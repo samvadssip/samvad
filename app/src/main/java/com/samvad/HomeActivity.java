@@ -7,63 +7,56 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.speech.tts.TextToSpeech;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MenuItem;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
-import androidx.core.graphics.drawable.DrawableCompat;
+import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.vision.CameraSource;
-import com.google.android.gms.vision.text.TextRecognizer;
 
-import java.io.ByteArrayOutputStream;
-import java.util.Collections;
 import java.util.Locale;
 
 public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuItemClickListener {
 
     public static final String TAG = "HomeActivity";
-    private static final int CAMERA_PERMISSION = 104;
-    SurfaceView surfaceView;
-    SurfaceHolder surfaceHolder;
-    private CameraSource cameraSource;
-    private UIUpdater uiUpdater;
+    private static int CAMERA_PERMISSION = 100;
+    private static int VIDEO_RECORD = 101;
 
-    LinearLayout speakBtnOff,speakBtnOn;
+    private Uri videoPath;
+
+    LinearLayout speakBtnOff, speakBtnOn;
     TextView translatedText;
     TextToSpeech textToSpeech;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
-        surfaceView = findViewById(R.id.surface_view);
         speakBtnOff = findViewById(R.id.speak_btn_off);
         speakBtnOn = findViewById(R.id.speak_btn_on);
         translatedText = findViewById(R.id.translated_text);
 
-        startCameraSource();
+        if (isCameraPresentInPhone()) {
+            getCameraPermission();
+        }
+
         textToSpeech = new TextToSpeech(getApplicationContext(), i -> {
 //            textToSpeech.setSpeechRate(0.85f);
             // if No error is found then only it will run
@@ -72,7 +65,7 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
 //              textToSpeech.setLanguage(Locale.US);
             }
         });
-        speakBtnOff.setOnClickListener((v)->{
+        speakBtnOff.setOnClickListener((v) -> {
             speakBtnOff.setVisibility(View.INVISIBLE);
             speakBtnOn.setVisibility(View.VISIBLE);
             textToSpeech.speak(translatedText.getText().toString(), TextToSpeech.QUEUE_FLUSH, null);
@@ -82,6 +75,44 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
                 speakBtnOn.setVisibility(View.INVISIBLE);
             }, 1000);
         });
+    }
+
+    public void recordVideoButtonPressed(View view) {
+        recordVideo();
+    }
+
+    private void getCameraPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_DENIED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION);
+        }
+    }
+
+    private void recordVideo() {
+        Intent intent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
+        startActivityForResult(intent, VIDEO_RECORD);
+    }
+
+    private boolean isCameraPresentInPhone() {
+        if(getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+            return true;
+        }else {
+            return false;
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == VIDEO_RECORD) {
+            if (resultCode == RESULT_OK) {
+                videoPath = data.getData();
+                Log.i("Path",videoPath.getPath().toString());
+            }else if (resultCode == RESULT_CANCELED) {
+
+            }else {
+
+            }
+        }
     }
 
     /**
@@ -140,80 +171,19 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
         popup.show();
     }
 
-    private void startCameraSource() {
-        if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(HomeActivity.this, "Cannot start camera", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        final TextRecognizer textRecognizer = new TextRecognizer.Builder(getApplicationContext()).build();
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        int width = displayMetrics.widthPixels;
-        cameraSource = new CameraSource.Builder(getApplicationContext(), textRecognizer).setFacing(CameraSource.CAMERA_FACING_BACK).setRequestedPreviewSize(width * 4 / 3, width).setAutoFocusEnabled(true).setRequestedFps(2.0f).build();
-        surfaceHolder = surfaceView.getHolder();
-        surfaceHolder.setFixedSize(width, width * 4 / 3);
-
-        surfaceHolder.addCallback(new SurfaceHolder.Callback() {
-            @Override
-            public void surfaceCreated(@NonNull SurfaceHolder holder) {
-                try {
-                    if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                        ActivityCompat.requestPermissions(HomeActivity.this, new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION);
-                        return;
-                    }
-                    cameraSource.start(surfaceView.getHolder());
-                    startProcessing();
-                } catch (Exception e) {
-                    Log.d(TAG, "surfaceCreated: " + e.getMessage());
-                }
-            }
-
-            @Override
-            public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {//Release source for cameraSourc
-
-            }
-
-            @Override
-            public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
-                cameraSource.stop();
-            }
-
-            //            Log.d(TAG, "surfaceChanged: "+bitmap);
-        });
-    }
-
-    private void startProcessing() {
-
-        uiUpdater = new UIUpdater(() -> {
-            Bitmap bitmap = loadBitmapFromView(surfaceView);
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 70, stream);
-            byte[] byteArray = stream.toByteArray();
-            StringBuffer sb = new StringBuffer();
-            Log.d(TAG, "startProcessing: " + byteArray.length);
-//            for (byte b:byteArray) {
-//                sb.append(b);
-//            }
-            Log.d(TAG, "" + Collections.singletonList(byteArray));
-//            Log.d(TAG, ""+sb.toString());
-
-//            Bitmap compressedBitmap = BitmapFactory.decodeByteArray(byteArray,0,byteArray.length);
-            Bitmap scaled = Bitmap.createScaledBitmap(bitmap, bitmap.getWidth() / 2, bitmap.getHeight() / 2, true);
-//            Log.d(TAG, "startProcessing: " + scaled.getHeight());
-//            Log.d(TAG, "startProcessing: " + scaled.getWidth());
-//            Log.d(TAG, "startProcessing: " + );
-//            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-//            scaled.compress(Bitmap.CompressFormat.JPEG, 100, stream);
-//            byte[] byteArray = stream.toByteArray();
-//            Log.d(TAG, "startProcessing: "+byteArray.length);
-//            scaled.recycle();
-            scaled.getAllocationByteCount();
-
-            Log.d(TAG, "startProcessing: " + scaled.getAllocationByteCount());
-        }, 100);
-        uiUpdater.startUpdates();
-    }
+//    private void startCameraSource() {
+//        if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+//            Toast.makeText(HomeActivity.this, "Cannot start camera", Toast.LENGTH_SHORT).show();
+//            return;
+//        }
+//
+//        final TextRecognizer textRecognizer = new TextRecognizer.Builder(getApplicationContext()).build();
+//        DisplayMetrics displayMetrics = new DisplayMetrics();
+//        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+//        int width = displayMetrics.widthPixels;
+//
+//
+//    }
 
     private void logout() {
 
@@ -229,11 +199,6 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
     }
 
     @Override
-    public void onPointerCaptureChanged(boolean hasCapture) {
-        super.onPointerCaptureChanged(hasCapture);
-    }
-
-    @Override
     protected void onResume() {
         super.onResume();
 //        uiUpdater.startUpdates();
@@ -242,7 +207,6 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
     @Override
     protected void onPause() {
         super.onPause();
-        uiUpdater.stopUpdates();
     }
 
     /**
