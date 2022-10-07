@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".SplashActivity"
-    android:background="@drawable/app_background_2">
+    android:background="@drawable/splash_background">
 
     <LinearLayout
         android:layout_width="0dp"
