@@ -93,9 +93,9 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
     }
 
     private boolean isCameraPresentInPhone() {
-        if(getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+        if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
             return true;
-        }else {
+        } else {
             return false;
         }
     }
@@ -106,10 +106,10 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
         if (requestCode == VIDEO_RECORD) {
             if (resultCode == RESULT_OK) {
                 videoPath = data.getData();
-                Log.i("Path",videoPath.getPath().toString());
-            }else if (resultCode == RESULT_CANCELED) {
+                Log.i("Path", videoPath.getPath().toString());
+            } else if (resultCode == RESULT_CANCELED) {
 
-            }else {
+            } else {
 
             }
         }

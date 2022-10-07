@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".SplashActivity"
-    android:background="@drawable/splash_background">
+    android:background="@color/app_background">
 
     <LinearLayout
         android:layout_width="0dp"
@@ -18,20 +18,11 @@
         android:gravity="center">
 
         <LinearLayout
-            android:layout_width="@dimen/_100sdp"
-            android:layout_height="@dimen/_90sdp"
+            android:layout_width="@dimen/_140sdp"
+            android:layout_height="@dimen/_150sdp"
             android:layout_gravity="center"
             android:gravity="center"
             android:background="@drawable/logo"/>
-
-        <LinearLayout
-            android:layout_width="@dimen/_90sdp"
-            android:layout_height="@dimen/_30sdp"
-            android:layout_gravity="center"
-            android:gravity="center"
-            android:layout_marginTop="@dimen/_10sdp"
-            android:background="@drawable/app_name"
-            android:backgroundTint="#D9D9D9"/>
 
     </LinearLayout>
 
