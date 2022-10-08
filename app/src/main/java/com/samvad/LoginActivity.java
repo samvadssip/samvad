@@ -136,7 +136,7 @@ public class LoginActivity extends AppCompatActivity {
 
 
     private void navigateToHomeActivity() {
-        startActivity(new Intent(this, HomeActivity.class));
+        startActivity(new Intent(this, FirstActivity.class));
 
         finish();
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
