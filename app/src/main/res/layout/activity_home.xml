@@ -95,25 +95,50 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
-                        android:layout_weight="7"
                         android:layout_gravity="center"
+                        android:layout_weight="5"
                         android:gravity="center">
-                        
+
                         <Button
                             android:id="@+id/record"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                            android:layout_width="@dimen/_80sdp"
+                            android:layout_height="@dimen/_50sdp"
+                            android:backgroundTint="#2E148C"
+                            android:elevation="@dimen/_20sdp"
                             android:text="record"
-                            android:onClick="recordVideoButtonPressed"/>
-                        
+                            android:textColor="@color/white" />
+
                     </LinearLayout>
 
+                    <LinearLayout
+                        android:id="@+id/pro_btn"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:visibility="invisible"
+                        android:orientation="vertical">
+
+                        <ProgressBar
+                            android:id="@+id/prog"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center"
+                            android:text="Processing..."
+                            android:textSize="@dimen/_18sdp" />
+
+                    </LinearLayout>
 
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
-                        android:layout_weight="3">
+                        android:layout_weight="4">
 
                         <androidx.constraintlayout.widget.ConstraintLayout
                             android:layout_width="match_parent"
@@ -133,7 +158,7 @@
                                     android:layout_height="wrap_content"
                                     android:layout_gravity="center"
                                     android:gravity="center"
-                                    android:text="House"
+                                    android:text="English | Gujarati"
                                     android:textColor="@color/black"
                                     android:textSize="22sp" />
 
@@ -146,9 +171,9 @@
                                 android:layout_marginEnd="15dp"
                                 android:layout_marginBottom="15dp"
                                 android:background="@drawable/vol_2"
+                                android:orientation="horizontal"
                                 app:layout_constraintBottom_toBottomOf="parent"
-                                app:layout_constraintEnd_toEndOf="parent"
-                                android:orientation="horizontal" />
+                                app:layout_constraintEnd_toEndOf="parent" />
 
                             <LinearLayout
                                 android:id="@+id/speak_btn_on"
@@ -157,10 +182,10 @@
                                 android:layout_marginEnd="15dp"
                                 android:layout_marginBottom="15dp"
                                 android:background="@drawable/vol"
+                                android:orientation="horizontal"
                                 android:visibility="invisible"
                                 app:layout_constraintBottom_toBottomOf="parent"
-                                app:layout_constraintEnd_toEndOf="parent"
-                                android:orientation="horizontal" />
+                                app:layout_constraintEnd_toEndOf="parent" />
 
                         </androidx.constraintlayout.widget.ConstraintLayout>
 

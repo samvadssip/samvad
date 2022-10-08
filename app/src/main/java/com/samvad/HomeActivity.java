@@ -2,47 +2,75 @@ package com.samvad;
 
 import android.Manifest;
 import android.app.Dialog;
+import android.app.ProgressDialog;
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
 import android.provider.MediaStore;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.MimeTypeMap;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.OnProgressListener;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.text.MessageFormat;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuItemClickListener {
 
     public static final String TAG = "HomeActivity";
-    private static int CAMERA_PERMISSION = 100;
-    private static int VIDEO_RECORD = 101;
-
-    private Uri videoPath;
+    private static final int CAMERA_PERMISSION = 100;
+    private static final int VIDEO_RECORD = 101;
+    public static final String Heroku_URL = "https://smapi2.herokuapp.com/";
+    public static final String Local_URL = "http://192.168.185.216:5000/";
+    public static final String ML_URL = Heroku_URL + "translate";
 
     LinearLayout speakBtnOff, speakBtnOn;
     TextView translatedText;
     TextToSpeech textToSpeech;
+    Button record;
+    ProgressDialog progressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,7 +84,9 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
         if (isCameraPresentInPhone()) {
             getCameraPermission();
         }
-
+        progressDialog = new ProgressDialog(HomeActivity.this);
+        record = findViewById(R.id.record);
+        record.setOnClickListener((v) -> recordVideo());
         textToSpeech = new TextToSpeech(getApplicationContext(), i -> {
 //            textToSpeech.setSpeechRate(0.85f);
             // if No error is found then only it will run
@@ -93,12 +123,10 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
     }
 
     private boolean isCameraPresentInPhone() {
-        if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-            return true;
-        } else {
-            return false;
-        }
+        return getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY);
     }
+
+    private Uri videoPath;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -106,7 +134,10 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
         if (requestCode == VIDEO_RECORD) {
             if (resultCode == RESULT_OK) {
                 videoPath = data.getData();
-                Log.i("Path", videoPath.getPath().toString());
+                progressDialog.setTitle("Uploading...");
+                progressDialog.show();
+                uploadvideo();
+                Log.i("Path", videoPath.getPath());
             } else if (resultCode == RESULT_CANCELED) {
 
             } else {
@@ -115,23 +146,94 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
         }
     }
 
-    /**
-     * Take a screenshot of the view
-     *
-     * @param view the view to capture
-     * @return the bitmap representing the pixels of the given view
-     */
-    @Nullable
-    public static Bitmap loadBitmapFromView(View view) {
-        try {
-            view.setDrawingCacheEnabled(true);
-            Bitmap bitmap = Bitmap.createBitmap(view.getDrawingCache());
-            view.setDrawingCacheEnabled(false);
-            return bitmap;
-        } catch (OutOfMemoryError error) {
-            Log.d(TAG, "Out of Memory while loadBitmapFromView");
-            return null;
+    private String getfiletype(Uri videouri) {
+        ContentResolver r = getContentResolver();
+        // get the file type ,in this case its mp4
+        MimeTypeMap mimeTypeMap = MimeTypeMap.getSingleton();
+        return mimeTypeMap.getExtensionFromMimeType(r.getType(videouri));
+    }
+
+    private void uploadvideo() {
+        if (videoPath != null) {
+            // save the selected video in Firebase storage
+
+            final StorageReference reference = FirebaseStorage.getInstance().getReference("Files/" + System.currentTimeMillis() + "." + getfiletype(videoPath));
+            reference.putFile(videoPath).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                @Override
+                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                    Task<Uri> uriTask = taskSnapshot.getStorage().getDownloadUrl();
+                    while (!uriTask.isSuccessful()) ;
+                    // get the link of video
+                    String downloadUri = uriTask.getResult().toString();
+                    DatabaseReference reference1 = FirebaseDatabase.getInstance().getReference("Video");
+                    HashMap<String, String> map = new HashMap<>();
+                    map.put("videolink", downloadUri);
+                    reference1.child("" + System.currentTimeMillis()).setValue(map);
+                    // Video uploaded successfully
+                    // Dismiss dialog
+                    progressDialog.dismiss();
+                    Toast.makeText(HomeActivity.this, "Video Uploaded!!", Toast.LENGTH_LONG).show();
+                    Log.d(TAG, "onSuccess: " + downloadUri);
+                    callML(downloadUri);
+                }
+            }).addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(@NonNull Exception e) {
+                    // Error, Image not uploaded
+                    progressDialog.dismiss();
+                    Toast.makeText(HomeActivity.this, "Failed " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "onFailure: " + e.getMessage());
+                }
+            }).addOnProgressListener(new OnProgressListener<UploadTask.TaskSnapshot>() {
+                // Progress Listener for loading
+                // percentage on the dialog box
+                @Override
+                public void onProgress(@NonNull UploadTask.TaskSnapshot taskSnapshot) {
+                    // show the progress bar
+                    double progress = (100.0 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
+                    progressDialog.setMessage("Uploaded " + (int) progress + "%");
+                }
+            });
         }
+    }
+
+    private void callML(String pathToFirebase) {
+        findViewById(R.id.pro_btn).setVisibility(View.VISIBLE);
+//        findViewById(R.id.prog);
+        StringRequest stringRequest = new StringRequest(Request.Method.POST, ML_URL, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "onResponse: " + response);
+                try {
+                    JSONObject jsonObject = new JSONObject(response);
+                    translatedText.setText(MessageFormat.format("{0}|{1}", jsonObject.getString("english"), jsonObject.getString("gujarati")));
+                    findViewById(R.id.pro_btn).setVisibility(View.INVISIBLE);
+//                    findViewById(R.id.prog);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    findViewById(R.id.pro_btn).setVisibility(View.INVISIBLE);
+                }
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "onErrorResponse: " + error);
+                findViewById(R.id.pro_btn).setVisibility(View.INVISIBLE);
+            }
+        }) {
+            @Nullable
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                Map<String, String> params = new HashMap<>();
+                params.put("video", pathToFirebase);
+                return params;
+            }
+        };
+        int MY_SOCKET_TIMEOUT_MS = 90000;
+        stringRequest.setRetryPolicy(new DefaultRetryPolicy(MY_SOCKET_TIMEOUT_MS, DefaultRetryPolicy.DEFAULT_MAX_RETRIES, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        RequestHandler.getInstance(this).addToRequestQueue(stringRequest);
     }
 
     @Override
@@ -171,20 +273,6 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
         popup.show();
     }
 
-//    private void startCameraSource() {
-//        if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-//            Toast.makeText(HomeActivity.this, "Cannot start camera", Toast.LENGTH_SHORT).show();
-//            return;
-//        }
-//
-//        final TextRecognizer textRecognizer = new TextRecognizer.Builder(getApplicationContext()).build();
-//        DisplayMetrics displayMetrics = new DisplayMetrics();
-//        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-//        int width = displayMetrics.widthPixels;
-//
-//
-//    }
-
     private void logout() {
 
         GoogleSignInOptions gso;
@@ -198,77 +286,4 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
         });
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-//        uiUpdater.startUpdates();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-    }
-
-    /**
-     * A class used to perform periodical updates,
-     * specified inside a runnable object. An update interval
-     * may be specified (otherwise, the class will perform the
-     * update every 2 seconds).
-     *
-     * @author Carlos Simões
-     */
-    public class UIUpdater {
-        // Create a Handler that uses the Main Looper to run in
-        private final Handler mHandler = new Handler(Looper.getMainLooper());
-
-        private final Runnable mStatusChecker;
-        private int UPDATE_INTERVAL = 1000;
-
-        /**
-         * Creates an UIUpdater object, that can be used to
-         * perform UIUpdates on a specified time interval.
-         *
-         * @param uiUpdater A runnable containing the update routine.
-         */
-        public UIUpdater(final Runnable uiUpdater) {
-            mStatusChecker = new Runnable() {
-                @Override
-                public void run() {
-                    // Run the passed runnable
-                    uiUpdater.run();
-                    // Re-run it after the update interval
-                    mHandler.postDelayed(this, UPDATE_INTERVAL);
-                }
-            };
-        }
-
-        /**
-         * The same as the default constructor, but specifying the
-         * intended update interval.
-         *
-         * @param uiUpdater A runnable containing the update routine.
-         * @param interval  The interval over which the routine
-         *                  should run (milliseconds).
-         */
-        public UIUpdater(Runnable uiUpdater, int interval) {
-            this(uiUpdater);
-            UPDATE_INTERVAL = interval;
-        }
-
-        /**
-         * Starts the periodical update routine (mStatusChecker
-         * adds the callback to the handler).
-         */
-        public synchronized void startUpdates() {
-            mStatusChecker.run();
-        }
-
-        /**
-         * Stops the periodical update routine from running,
-         * by removing the callback.
-         */
-        public synchronized void stopUpdates() {
-            mHandler.removeCallbacks(mStatusChecker);
-        }
-    }
 }
