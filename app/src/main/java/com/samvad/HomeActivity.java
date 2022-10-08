@@ -9,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.MediaStore;
@@ -16,6 +17,7 @@ import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.MimeTypeMap;
 import android.widget.Button;
@@ -69,7 +71,7 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
     LinearLayout speakBtnOff, speakBtnOn;
     TextView translatedText;
     TextToSpeech textToSpeech;
-    Button record;
+    LinearLayout record;
     ProgressDialog progressDialog;
 
     @Override
@@ -80,6 +82,8 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
         speakBtnOff = findViewById(R.id.speak_btn_off);
         speakBtnOn = findViewById(R.id.speak_btn_on);
         translatedText = findViewById(R.id.translated_text);
+
+//        transparentStatusBar();
 
         if (isCameraPresentInPhone()) {
             getCameraPermission();
@@ -107,8 +111,36 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
         });
     }
 
-    public void recordVideoButtonPressed(View view) {
-        recordVideo();
+    public void transparentStatusBar() {
+        if ((Build.VERSION.SDK_INT >= 19) && (Build.VERSION.SDK_INT < 21)) {
+            setWindowFlag(true);
+        }
+
+        if (Build.VERSION.SDK_INT >= 19) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            );
+        }
+
+        if (Build.VERSION.SDK_INT >= 21) {
+            setWindowFlag(false);
+            getWindow().setStatusBarColor(Color.TRANSPARENT);
+//            getWindow().setNavigationBarColor(Color.TRANSPARENT);
+        }
+    }
+
+    public void setWindowFlag(boolean on) {
+        Window window = getWindow();
+        WindowManager.LayoutParams winParams = window.getAttributes();
+        if (on) {
+            winParams.flags |= WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS;
+        } else {
+            winParams.flags &= ~WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS;
+        }
+        window.setAttributes(winParams);
     }
 
     private void getCameraPermission() {
@@ -158,6 +190,8 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
             // save the selected video in Firebase storage
 
             final StorageReference reference = FirebaseStorage.getInstance().getReference("Files/" + System.currentTimeMillis() + "." + getfiletype(videoPath));
+            // Progress Listener for loading
+// percentage on the dialog box
             reference.putFile(videoPath).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                 @Override
                 public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
@@ -176,23 +210,15 @@ public class HomeActivity extends AppCompatActivity implements PopupMenu.OnMenuI
                     Log.d(TAG, "onSuccess: " + downloadUri);
                     callML(downloadUri);
                 }
-            }).addOnFailureListener(new OnFailureListener() {
-                @Override
-                public void onFailure(@NonNull Exception e) {
-                    // Error, Image not uploaded
-                    progressDialog.dismiss();
-                    Toast.makeText(HomeActivity.this, "Failed " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    Log.d(TAG, "onFailure: " + e.getMessage());
-                }
-            }).addOnProgressListener(new OnProgressListener<UploadTask.TaskSnapshot>() {
-                // Progress Listener for loading
-                // percentage on the dialog box
-                @Override
-                public void onProgress(@NonNull UploadTask.TaskSnapshot taskSnapshot) {
-                    // show the progress bar
-                    double progress = (100.0 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
-                    progressDialog.setMessage("Uploaded " + (int) progress + "%");
-                }
+            }).addOnFailureListener(e -> {
+                // Error, Image not uploaded
+                progressDialog.dismiss();
+                Toast.makeText(HomeActivity.this, "Failed " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                Log.d(TAG, "onFailure: " + e.getMessage());
+            }).addOnProgressListener(taskSnapshot -> {
+                // show the progress bar
+                double progress = (100.0 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
+                progressDialog.setMessage("Uploaded " + (int) progress + "%");
             });
         }
     }

@@ -10,6 +10,8 @@
 
     <color name="app_background">#00416A</color>
 
+    <color name="primaryStatusBar">#883DAF</color>
+
     <color name="base_txt">#525252</color>
     <color name="base_btn_primary">#353535</color>
     <color name="base_btn_accent">#707070</color>
